@@ -1,0 +1,116 @@
+name: Build LixiangTV desktop
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/rebrand.py"
+      - ".github/workflows/build-lixiangtv.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: macos-arm64
+            wails_platform: darwin/arm64
+          - os: macos-15-intel
+            platform: macos-intel
+            wails_platform: darwin/amd64
+          - os: windows-2022
+            platform: windows-x64
+            wails_platform: windows/amd64
+
+    steps:
+      - name: Checkout LixiangTV configuration
+        uses: actions/checkout@v4
+        with:
+          path: config
+
+      - name: Checkout BeefTV source
+        uses: actions/checkout@v4
+        with:
+          repository: glanderness/BeefTV
+          ref: main
+          path: source
+
+      - name: Apply LixiangTV branding
+        run: python config/scripts/rebrand.py source
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: source/backend/go.mod
+          cache-dependency-path: source/backend/go.sum
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+
+      - name: Select bundled Node runtime
+        shell: bash
+        run: |
+          node -e 'const fs=require("fs"),p=require("path"); const bin=p.dirname(process.execPath); fs.appendFileSync(process.env.GITHUB_ENV, `BEEFTV_NODE_RUNTIME=${process.platform==="win32"?bin:p.dirname(bin)}\\n`);'
+
+      - name: Install Windows compiler
+        if: runner.os == 'Windows'
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          release: true
+          path-type: inherit
+          install: mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-binutils
+
+      - name: Validate Windows compiler
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: source
+        env:
+          MSYSTEM_PREFIX: ${{ steps.msys2.outputs.msys2-location }}\ucrt64
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\assert-windows-dwarf5-cgo.ps1
+
+      - name: Build macOS app
+        if: runner.os != 'Windows'
+        shell: bash
+        working-directory: source
+        env:
+          BEEFTV_SKIP_LOCAL_VERIFY: "1"
+          BEEFTV_WAILS_PLATFORM: ${{ matrix.wails_platform }}
+        run: |
+          sh plugin-packages/build-packages.sh
+          ./scripts/build-beeftv-release.sh
+          ditto -c -k --sequesterRsrc --keepParent \
+            backend/cmd/desktop/build/bin/LixiangTV.app \
+            ../LixiangTV-${{ matrix.platform }}.zip
+
+      - name: Build Windows app
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: source
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-beeftv-windows-release.ps1
+          Compress-Archive -Path .\backend\cmd\desktop\build\bin\* -DestinationPath ..\LixiangTV-${{ matrix.platform }}.zip
+
+      - name: Upload desktop package
+        uses: actions/upload-artifact@v4
+        with:
+          name: LixiangTV-${{ matrix.platform }}
+          path: LixiangTV-${{ matrix.platform }}.zip
+          if-no-files-found: error
+          retention-days: 30
