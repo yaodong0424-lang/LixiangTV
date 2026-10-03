@@ -29,7 +29,7 @@ replace("web/index.html", '<meta name="description" content="AI 影视与短剧�
 replace("web/index.html", '<link rel="icon" href="/beef-logo.png" type="image/png" />', '<link rel="icon" href="/lixiangtv-mark.svg" type="image/svg+xml" />')
 replace("web/index.html", "<title>正在加载</title>", "<title>理想TV</title>")
 replace("web/src/pages/home/home-dashboard.tsx", 'aria-label="BeefTV 首页"', 'aria-label="理想TV 首页"')
-replace("web/src/pages/agents/index.tsx", "你的 BeefTV 画布", "你的理想TV画布")
+# Upstream Agent copy changes frequently; product branding is supplied by appearance settings.
 replace("web/src/components/channel-headers-editor.tsx", 'const DEFAULT_USER_AGENT = "BeefTV/1.0 (+https://github.com/glanderness/BeefTV)";', 'const DEFAULT_USER_AGENT = "LixiangTV/1.0";')
 
 replace("scripts/build-beeftv-release.sh", 'echo "Building BeefTV $VERSION_VALUE ($COMMIT_VALUE)"', 'echo "Building 理想TV $VERSION_VALUE ($COMMIT_VALUE)"')
