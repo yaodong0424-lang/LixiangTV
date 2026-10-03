@@ -10,7 +10,7 @@ def replace(path, old, new):
         raise RuntimeError(f"expected text not found in {path}: {old[:80]!r}")
     target.write_text(text.replace(old, new), encoding="utf-8")
 
-replace("backend/cmd/desktop/wails.json", '"name": "BeefTV"', '"name": "理想TV"')
+replace("backend/cmd/desktop/wails.json", '"name": "BeefTV"', '"name": "LixiangTV"')
 replace("backend/cmd/desktop/wails.json", '"outputfilename": "BeefTV"', '"outputfilename": "LixiangTV"')
 replace("backend/cmd/desktop/wails.json", '"name": "BeefTV Contributors"', '"name": "理想TV Contributors"')
 replace("backend/cmd/desktop/main.go", 'Title:  "BeefTV"', 'Title:  "理想TV"')
